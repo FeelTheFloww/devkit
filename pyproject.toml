@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devkit"
+version = "0.1.0"
+description = "AI-powered developer toolkit that orchestrates GitHub CLI and AI CLIs"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "typer>=0.12.3",
+  "rich>=13.7.1",
+]
+
+[project.scripts]
+devkit = "devkit.main:run"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

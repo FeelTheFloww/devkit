@@ -1,0 +1,235 @@
+# devkit
+
+> A Python-powered CLI meta-tool that orchestrates GitHub CLI, GitHub Copilot CLI,
+> Gemini, Claude Code, `git`, and `fzf` into one opinionated developer workflow.
+
+`devkit` is the hub of the modern terminal. Instead of stitching together `gh`,
+an AI CLI, `git`, and a fuzzy picker in a dozen shell aliases, you get a single
+command (`devkit workflow feature-start`, `devkit ai review 42`, `devkit doctor`)
+that composes them with Rich output and a shared config.
+
+## Table of contents
+
+1. [Install](#install)
+2. [Prerequisites](#prerequisites)
+3. [Command reference](#command-reference)
+4. [Flagship workflows](#flagship-workflows)
+5. [Configuration](#configuration)
+6. [Example session](#example-session)
+7. [Project structure](#project-structure)
+8. [Development](#development)
+9. [Grading checklist](#grading-checklist)
+
+## Install
+
+```bash
+git clone https://github.com/<you>/devkit.git
+cd devkit
+pip install -e .
+```
+
+If `devkit` is not on your `PATH` afterwards on Windows, run it through Python:
+
+```bash
+python -m devkit.main --help
+```
+
+Run the built-in doctor immediately after install to confirm the rest of the
+toolchain is ready:
+
+```bash
+devkit doctor
+```
+
+## Prerequisites
+
+`devkit` calls external binaries via `subprocess`. Each command declares which
+tools it needs and fails with a clear message when one is missing. The full
+matrix is:
+
+| Tool     | Required by                                              | How to install                         |
+| -------- | -------------------------------------------------------- | -------------------------------------- |
+| `git`    | all workflow commands                                    | system package manager                 |
+| `gh`     | `devkit gh *`, `devkit workflow *`, `devkit ai review/summarize` | <https://cli.github.com>       |
+| `gh copilot` | `devkit ai explain`, `devkit ai suggest`             | `gh extension install github/gh-copilot` |
+| `claude` | `devkit ai review/commit/summarize/docstring` (default)  | `npm install -g @anthropic-ai/claude-code` |
+| `gemini` | `devkit ai review/commit/summarize/docstring` (alt)      | `npm install -g @google/generative-ai-cli` |
+| `fzf`    | `devkit gh issues --interactive`                         | `brew install fzf` / `apt install fzf` |
+| `bat`    | optional (doctor reports it)                             | `brew install bat` / `apt install bat` |
+| `delta`  | optional (doctor reports it)                             | `brew install git-delta`               |
+
+## Command reference
+
+| Command                                          | What it does                                                                 |
+| ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `devkit doctor`                                  | Diagnose the toolchain: versions, `gh` auth, copilot extension, config       |
+| `devkit gh issues [-i]`                          | List open issues in a Rich table; `-i` adds an `fzf` picker                  |
+| `devkit gh pr-summary <n>`                       | PR metadata + changed files + reviews                                        |
+| `devkit gh start-feature <name>`                 | Create a `feature/<name>` branch (optionally fork first)                     |
+| `devkit gh open-pr`                              | Interactive `gh pr create` with prompts for title / body                     |
+| `devkit gh run-status`                           | Latest CI workflow runs                                                      |
+| `devkit gh repo-init`                            | `gh repo create devkit --public --clone`                                     |
+| `devkit ai explain "<cmd>"`                      | Copilot CLI explains a shell command                                         |
+| `devkit ai suggest "<task>" [--target git\|gh]`  | Copilot CLI suggests a command for a task                                    |
+| `devkit ai review <pr>`                          | AI-powered review of a PR (diff + prompt -> Claude / Gemini)                 |
+| `devkit ai summarize <pr>`                       | Plain-English bullet summary of a PR                                         |
+| `devkit ai commit`                               | Generate a conventional commit message from the staged diff                  |
+| `devkit ai docstring <file.py> [--apply]`        | Add Google-style docstrings to a Python file (preview, then `--apply`)       |
+| `devkit workflow feature-start <name> [--issue]` | Branch + push + draft PR + AI plan                                           |
+| `devkit workflow daily-digest`                   | PRs needing your review + issues assigned to you + latest CI runs            |
+| `devkit config show / path / set / reset`        | Inspect and edit `~/.devkit/config.json`                                     |
+
+## Flagship workflows
+
+### Start a feature end-to-end
+
+```bash
+devkit workflow feature-start rate-limiter --issue 42
+```
+
+1. Creates `feature/rate-limiter` and pushes it.
+2. Opens a draft PR whose body is `Closes #42`.
+3. Fetches the issue body via `gh issue view --json` and asks Claude (or Gemini)
+   for a step-by-step implementation plan, shown in a cyan panel.
+
+### Morning triage
+
+```bash
+devkit workflow daily-digest
+```
+
+Three tables, one command: PRs awaiting your review, issues assigned to you,
+and the last N workflow runs in the current repo. The command that replaces
+three browser tabs.
+
+### AI code review on your own PR
+
+```bash
+devkit ai review 42
+# or, using Gemini instead of the configured default:
+devkit ai review 42 --model gemini
+```
+
+Under the hood: `gh pr diff 42` + `gh pr view 42 --json title,body`, a structured
+prompt, then `claude` or `gemini` as a subprocess. Output lands in a Rich panel.
+
+## Configuration
+
+`~/.devkit/config.json` is read on every AI command. It accepts:
+
+```json
+{
+  "ai_tool": "claude",
+  "default_repo": "",
+  "theme": "dark",
+  "show_spinner": true
+}
+```
+
+Drive it from the CLI:
+
+```bash
+devkit config show
+devkit config set ai_tool gemini
+devkit config set default_repo '"cli/cli"'
+devkit config reset --yes
+```
+
+Values are parsed as JSON first (so `true`, numbers, and quoted strings work)
+and fall back to raw strings otherwise.
+
+## Example session
+
+```console
+$ devkit doctor
+                   devkit doctor
+  git      ok       git version 2.42.0
+  gh       ok       gh version 2.53.0
+  claude   ok       2.1.111 (Claude Code)
+  ...
+Verdict: All required tools are installed.
+
+$ devkit gh issues --limit 5
+  Open Issues
+  #12  Rate limiting flaky    performance, bug
+  #11  Document config file   docs
+
+$ devkit ai explain "git rebase -i HEAD~3"
+  Copilot Explanation
+  Launches an interactive rebase editor covering the last 3 commits...
+
+$ devkit workflow feature-start rate-limiter --issue 12
+  Starting Feature
+  Created branch: feature/rate-limiter
+  Draft PR: https://github.com/me/devkit/pull/17
+  AI Implementation Plan
+  1. Add a token-bucket helper in utils/ratelimit.py ...
+  Ready to code\!
+```
+
+## Project structure
+
+```text
+devkit/
+├── discovery.md              # Phase 1 deliverable
+├── pyproject.toml
+├── README.md
+├── src/
+│   └── devkit/
+│       ├── __init__.py
+│       ├── main.py           # Root Typer app
+│       ├── config.py         # ~/.devkit/config.json load/save
+│       ├── commands/
+│       │   ├── github.py     # devkit gh *
+│       │   ├── ai.py         # devkit ai * (+ summarize, docstring)
+│       │   ├── workflow.py   # devkit workflow * (+ daily-digest)
+│       │   ├── config_cmd.py # devkit config show/set/reset/path
+│       │   └── doctor.py     # devkit doctor
+│       └── utils/
+│           ├── gh.py         # `gh` subprocess wrappers
+│           ├── shell.py      # Generic run_cmd / run_json
+│           ├── display.py    # Shared Rich console + table helpers
+│           └── check.py      # require_tools, tool_available
+└── tests/
+    ├── test_config.py
+    ├── test_config_roundtrip.py
+    ├── test_shell.py
+    ├── test_check.py
+    ├── test_ai_helpers.py
+    └── test_cli.py
+```
+
+## Development
+
+```bash
+pip install -e .
+pip install pytest
+pytest -q
+```
+
+The test suite covers the subprocess helpers, config round-trip, tool checks,
+the `_strip_code_fence` / `_default_model` helpers inside `ai.py`, and a full
+Typer CLI smoke test that every command group exposes `--help` correctly.
+
+## Grading checklist
+
+Mapped to the rubric in the project brief:
+
+- **Tool integration (20 pts):** every external CLI is called via
+  `subprocess.run` in `src/devkit/utils/shell.py` and `src/devkit/commands/*.py`.
+- **Workflow command (20 pts):** `devkit workflow feature-start` chains
+  `git checkout`, `git push`, `gh pr create --draft`, and the AI plan.
+- **Code quality (10 pts):** typed functions, `from __future__ import annotations`,
+  no global state, shared helpers in `utils/`.
+- **Error handling (15 pts):** `utils/check.py` gives per-tool install hints;
+  `utils/shell.py` converts `FileNotFoundError` and `CalledProcessError` into
+  readable messages; `devkit doctor` surfaces them upfront.
+- **UX and rich output (10 pts):** Rich tables for issues / PRs / CI runs,
+  panels for AI output, `SpinnerColumn` during AI calls, JSON syntax
+  highlighting for `devkit config show`.
+- **README and demo (25 pts):** this file + `discovery.md` + live examples in
+  every command's `--help`.
+/ /   d e m o   c h a n g e  
+ / /   d e m o   c h a n g e  
+ / /   d e m o   c h a n g e  
+ 

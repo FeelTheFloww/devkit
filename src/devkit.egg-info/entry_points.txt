@@ -1,0 +1,2 @@
+[console_scripts]
+devkit = devkit.main:run
