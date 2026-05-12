@@ -31,18 +31,38 @@ def feature_start(
     console.rule("[bold]Starting Feature[/bold]")
 
     branch = f"feature/{name}"
-    subprocess.run(["git", "checkout", "-b", branch], check=True)
-    console.print(f"[green]Created branch:[/green] {branch}")
+    try:
+        subprocess.run(["git", "checkout", "-b", branch], check=True)
+        console.print(f"[green]Created branch:[/green] {branch}")
+    except subprocess.CalledProcessError:
+        console.print("[red]Error: Could not create branch.[/red]")
+        console.print("[yellow]Make sure you're in a Git repository (run 'git init' if needed)[/yellow]")
+        raise typer.Exit(1)
 
-    subprocess.run(["git", "push", "-u", "origin", branch], check=True)
-    console.print(f"[green]Pushed branch:[/green] {branch}")
+    try:
+        subprocess.run(["git", "push", "-u", "origin", branch], check=True)
+        console.print(f"[green]Pushed branch:[/green] {branch}")
+    except subprocess.CalledProcessError:
+        console.print("[red]Error: Could not push branch to remote.[/red]")
+        console.print("[yellow]Make sure 'origin' remote is configured (run 'git remote add origin <url>')[/yellow]")
+        raise typer.Exit(1)
 
     pr_title = name.replace("-", " ").title()
     pr_args = ["pr", "create", "--draft", "--title", pr_title, "--body", ""]
     if issue is not None:
         pr_args = ["pr", "create", "--draft", "--title", pr_title, "--body", f"Closes #{issue}"]
-    pr_url = gh(*pr_args)
-    console.print(f"[green]Draft PR:[/green] {pr_url}")
+    
+    try:
+        pr_url = gh(*pr_args)
+        console.print(f"[green]Draft PR:[/green] {pr_url}")
+    except RuntimeError as e:
+        console.print("[red]Error: Could not create Pull Request on GitHub.[/red]")
+        if "known GitHub host" in str(e):
+            console.print("[yellow]Your remote is not a GitHub repository.[/yellow]")
+            console.print("[yellow]Make sure you've set up a GitHub remote: git remote set-url origin <github-url>[/yellow]")
+        else:
+            console.print(f"[yellow]Details: {str(e)[:200]}[/yellow]")
+        raise typer.Exit(1)
 
     if issue is not None:
         issue_info = gh_json("issue", "view", str(issue), "--json", "title,body")
