@@ -144,3 +144,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.orig
+
+.coverage
+.coverage.*
