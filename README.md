@@ -12,7 +12,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/<you>/devkit.git
+git clone https://github.com/FeelTheFloww/devkit.git
 cd devkit
 pip install -e .
 devkit doctor
@@ -114,3 +114,7 @@ main.add_typer(my_command.app, name="my")
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Technical design and decisions
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [discovery.md](discovery.md) � Initial discovery document
+
+## Documentation
+
+Additional documentation (architecture, diagrams, cheat sheets — mostly in French) lives in [`docs/`](docs/). See [ARCHITECTURE.md](ARCHITECTURE.md) for the technical design and [CHANGELOG.md](CHANGELOG.md) for version history.
