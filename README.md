@@ -1,5 +1,7 @@
 # devkit – The Modern Developer's Command Hub
 
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 > **AI-powered CLI orchestration**: Combine GitHub CLI, Claude, Gemini, Git, and more into one unified workflow.
 
 `devkit` is a Python CLI that orchestrates multiple tools (`gh`, `git`, Claude, Gemini) for developers:
@@ -118,3 +120,16 @@ main.add_typer(my_command.app, name="my")
 ## Documentation
 
 Additional documentation (architecture, diagrams, cheat sheets — mostly in French) lives in [`docs/`](docs/). See [ARCHITECTURE.md](ARCHITECTURE.md) for the technical design and [CHANGELOG.md](CHANGELOG.md) for version history.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Plugin system for custom commands
+- [ ] Test coverage and CI pipeline
+- [ ] PyPI packaging and release automation
+- [ ] Support for GitLab and Bitbucket backends
+
+## License
+
+[MIT](LICENSE)
